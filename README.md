@@ -20,6 +20,7 @@ This extension keeps that check inside Pi, without patching Pi core.
 
 - `runtime_info` tool for the current Pi session.
 - `subagent_runtime_info` tool for checking an active `pi-subagents` run by `agent_id`.
+- Tested subagent integration with Tintinweb's `pi-subagents`: `git:github.com/tintinweb/pi-subagents`.
 - `runtime_artifact_fields` tool that returns ready-to-paste YAML/JSON artifact fields.
 - `/runtime-info` command for a quick human-readable runtime summary.
 - No external service and no network calls.
@@ -140,7 +141,13 @@ The current-session tools use documented Pi extension APIs:
 - `pi.getThinkingLevel()`;
 - session assistant message metadata.
 
-The `subagent_runtime_info` tool is intentionally narrower. It reads the active `pi-subagents` manager from `globalThis[Symbol.for("pi-subagents:manager")]`, which is a package-level integration seam rather than a Pi core API. If `pi-subagents` is not installed, not loaded, or changes that seam, current-session tools continue to work and the subagent tool reports a clear error.
+The `subagent_runtime_info` tool is intentionally narrower. It is tested against Tintinweb's `pi-subagents` package:
+
+```bash
+pi install git:github.com/tintinweb/pi-subagents
+```
+
+It reads the active manager from `globalThis[Symbol.for("pi-subagents:manager")]`, which is a package-level integration seam rather than a Pi core API. Put `pi-subagents` in Pi settings before this package so its manager is available when the tool runs. If `pi-subagents` is not installed, not loaded, or changes that seam, current-session tools continue to work and the subagent tool reports a clear error.
 
 ## Verification
 

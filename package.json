@@ -1,0 +1,60 @@
+{
+  "name": "@datspike/pi-runtime-info-extension",
+  "version": "0.1.0",
+  "description": "Pi extension exposing verified runtime model, thinking level, and artifact metadata to agents.",
+  "private": false,
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/datspike/pi-runtime-info-extension.git"
+  },
+  "homepage": "https://github.com/datspike/pi-runtime-info-extension#readme",
+  "bugs": {
+    "url": "https://github.com/datspike/pi-runtime-info-extension/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-extension",
+    "runtime",
+    "model-routing",
+    "observability",
+    "metadata"
+  ],
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "scripts": {
+    "test": "node --test --import tsx tests/**/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test",
+    "prepublishOnly": "npm run check"
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-ai": "*",
+    "@mariozechner/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "devDependencies": {
+    "@mariozechner/pi-ai": "^0.72.1",
+    "@mariozechner/pi-coding-agent": "^0.72.1",
+    "@types/node": "^24.3.0",
+    "tsx": "^4.20.6",
+    "typebox": "^1.0.55",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  }
+}

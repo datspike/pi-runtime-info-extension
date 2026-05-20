@@ -149,6 +149,20 @@ pi install git:github.com/tintinweb/pi-subagents
 
 It reads the active manager from `globalThis[Symbol.for("pi-subagents:manager")]`, which is a package-level integration seam rather than a Pi core API. Put `pi-subagents` in Pi settings before this package so its manager is available when the tool runs. If `pi-subagents` is not installed, not loaded, or changes that seam, current-session tools continue to work and the subagent tool reports a clear error.
 
+## Where to read current Pi docs
+
+For questions about Pi APIs and usage examples, start with the locally installed `@earendil-works/pi-coding-agent` package.
+Prefer this read order inside that package: `README.md`, then `docs/`, then `examples/`.
+
+In practice, that means:
+
+- first find your local Pi install directory through your global npm root or Pi install location;
+- then read `@earendil-works/pi-coding-agent/README.md`, `docs/`, and `examples/`;
+- use this extension's code as an integration example, not as the source of truth for Pi APIs.
+
+Important: the published `@earendil-works/pi-coding-agent` package does not include `src/`.
+If you need Pi core implementation details or the exact internal behavior, use a source checkout of `earendil-works/pi-mono`, not only the installed npm package.
+
 ## Verification
 
 ```bash

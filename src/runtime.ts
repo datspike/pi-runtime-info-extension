@@ -1,5 +1,5 @@
-import type { AssistantMessage, Model } from "@mariozechner/pi-ai";
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { AssistantMessage, Model } from "@earendil-works/pi-ai";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 export const RUNTIME_INFO_SOURCE = "pi-runtime-info";
 

@@ -19,8 +19,9 @@ This extension keeps that check inside Pi, without patching Pi core.
 ## Features
 
 - `runtime_info` tool for the current Pi session.
-- `subagent_runtime_info` tool for checking an active `pi-subagents` run by `agent_id`.
-- Tested subagent integration with Tintinweb's `pi-subagents`: `git:github.com/tintinweb/pi-subagents`.
+- `subagent_runtime_info` tool for checking an owned `pi-subagents` async run by `agent_id`, including completed and resumed runs.
+- Multi-child runs require the optional `index` parameter (or the command's second argument).
+- Tested subagent integration with nicobailon `pi-subagents` 0.66.x through its versioned in-process RPC seam.
 - `runtime_artifact_fields` tool that returns ready-to-paste YAML/JSON artifact fields.
 - `/runtime-info` command for a quick human-readable runtime summary.
 - No external service and no network calls.
@@ -72,7 +73,7 @@ Expected shape:
 | Tool | Use it when | Output |
 | --- | --- | --- |
 | `runtime_info` | You need the current session runtime. | Model, thinking level, session id/file/cwd, last assistant message metadata. |
-| `subagent_runtime_info` | You launched a subagent and need the resolved runtime by `agent_id`. | Subagent status, model, thinking level, session metadata, output file. |
+| `subagent_runtime_info` | You launched an async subagent and need confirmed runtime metadata by run id. | Run status, session metadata, model/thinking evidence, output file. |
 | `runtime_artifact_fields` | You are about to write a report, review, plan, or handoff artifact. | Ready artifact fields plus a YAML block. |
 
 Example artifact fields:
@@ -84,7 +85,7 @@ thinking_requested: high
 thinking_actual: xhigh
 runtime_verified_at: 2026-05-04T12:00:00.000Z
 runtime_info_source: pi-runtime-info
-runtime_info_confidence: subagent_session_model_and_thinking
+runtime_info_confidence: subagent_session_assistant_metadata_and_thinking_level_change
 runtime_scope: subagent
 runtime_agent_id: 57444cd3-fb66-4b7
 ```
@@ -93,10 +94,10 @@ runtime_agent_id: 57444cd3-fb66-4b7
 
 ```text
 /runtime-info
-/runtime-info <agent_id>
+/runtime-info <run_id> [child_index]
 ```
 
-Without arguments, the command shows the current session model, thinking level, session id, and cwd. With an `agent_id`, it shows the same summary for a known subagent record.
+Without arguments, the command shows the current session model, thinking level, session id, and cwd. With a run id it uses the parent-owned async status path; pass `child_index` for multi-child runs.
 
 ## Installation options
 
@@ -141,13 +142,13 @@ The current-session tools use documented Pi extension APIs:
 - `pi.getThinkingLevel()`;
 - session assistant message metadata.
 
-The `subagent_runtime_info` tool is intentionally narrower. It is tested against Tintinweb's `pi-subagents` package:
+The `subagent_runtime_info` tool is intentionally narrower. It is tested against nicobailon `pi-subagents` 0.66.x:
 
 ```bash
-pi install git:github.com/tintinweb/pi-subagents
+pi install git:github.com/nicobailon/pi-subagents
 ```
 
-It reads the active manager from `globalThis[Symbol.for("pi-subagents:manager")]`, which is a package-level integration seam rather than a Pi core API. Put `pi-subagents` in Pi settings before this package so its manager is available when the tool runs. If `pi-subagents` is not installed, not loaded, or changes that seam, current-session tools continue to work and the subagent tool reports a clear error.
+It sends a targeted `status` request over `subagents:rpc:v1:request` and accepts only a run whose `status.json.sessionId` matches the current parent session. The adapter reads package-owned run metadata and a snapshot of the latest saved branch in the child session JSONL, not a live parent-side runtime; `status.model` and `status.thinking` are not treated as actual values. If `pi-subagents` is not installed, not loaded, or does not expose this RPC seam, current-session tools continue to work and the subagent tool reports a clear error.
 
 ## Where to read current Pi docs
 
@@ -179,8 +180,9 @@ pi --mode json -p 'Call runtime_info and print its JSON result.'
 ## Current limitations
 
 - `runtime_info` reports the selected/effective session model. After at least one assistant response, `last_assistant_message` can also confirm provider-reported message metadata.
-- `subagent_runtime_info` only sees subagents known to the active parent session and the loaded `pi-subagents` manager.
-- If a subagent is started with extensions disabled, it cannot call `runtime_info` itself; the parent can still call `subagent_runtime_info` when the manager seam is available.
+- `subagent_runtime_info` only sees async runs accepted by the loaded `pi-subagents` RPC bridge and belonging to the active parent session.
+- The child runtime is read as a snapshot of its latest saved branch, not as live parent-side state. If `sessionFile` is not written yet, or metadata is missing/partially written, actuals remain `null` with an insufficient-confidence value.
+- Malformed status/tree data, an ambiguous multi-child run without `index`, a run belonging to another parent session, or an invalid run id fails closed; message bodies and transcripts are never returned.
 
 ## License
 

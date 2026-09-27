@@ -9,7 +9,7 @@
 ## Как ориентироваться
 
 - `runtime_info` и `/runtime-info` для текущей сессии должны опираться только на документированные Pi API: `ctx.model`, `ctx.sessionManager`, `pi.getThinkingLevel()`.
-- `subagent_runtime_info` — best-effort интеграция с `pi-subagents` через `globalThis[Symbol.for("pi-subagents:manager")]`; держи эту зависимость изолированной в `src/runtime.ts` и явно покрытой тестами.
+- `subagent_runtime_info` — интеграция с async runs `pi-subagents` через RPC-шину версии `subagents:rpc:v1` и метаданные статуса/сессии, относящиеся к текущей родительской сессии; держи адаптер изолированным в `src/runtime.ts` и явно покрытым тестами.
 - `runtime_artifact_fields` должен оставаться тонким преобразованием runtime-info в поля артефакта, без знания о конкретных review/research workflow.
 
 ## Ограничения
@@ -23,5 +23,5 @@
 
 - После правок запускай `npm run check`; перед публикацией дополнительно `npm pack --dry-run`.
 - Для изменений public API обновляй README: tools, command, compatibility notes и limitations.
-- Если меняется seam `pi-subagents`, добавляй тест на отсутствие manager и на найденную запись сабагента.
+- Если меняется стык `pi-subagents`, добавляй тесты на недоступную RPC-шину, run текущей и чужой родительской сессии, multi-child index и неполные метаданные сессии.
 - Сохраняй маленькую поверхность расширения: новые tools добавляй только если они нужны агенту как отдельный стабильный контракт.

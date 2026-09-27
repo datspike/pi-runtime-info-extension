@@ -72,6 +72,7 @@ interface RunFixtureOptions {
   steps?: Array<{ agent: string; sessionFile?: string; status?: string; model?: string; thinking?: string }>;
   sessionLines?: string[];
   sessionFile?: string;
+  statusReply?: { text?: string; structuredAsyncDir?: boolean; structuredDetailsAsyncDir?: boolean; crlfDirSpacing?: boolean };
 }
 
 async function makeRun(options: RunFixtureOptions = {}): Promise<{
@@ -102,6 +103,10 @@ async function makeRun(options: RunFixtureOptions = {}): Promise<{
     await writeFile(sessionFile, options.sessionLines.join("\n"), "utf8");
   }
 
+  const replyText = options.statusReply?.text
+    ?? (options.statusReply?.crlfDirSpacing
+      ? `Status target: run ${runId}\r\nRun: ${runId}\r\nState: ${status.state}\r\nDir:  ${asyncDir}  `
+      : `Status target: run ${runId}\nRun: ${runId}\nState: ${status.state}\nDir: ${asyncDir}`);
   const events = new FakeEventBus();
   events.on("subagents:rpc:v1:request", (raw) => {
     const request = raw as { requestId: string; method?: string };
@@ -112,7 +117,9 @@ async function makeRun(options: RunFixtureOptions = {}): Promise<{
       method: "status",
       success: true,
       data: {
-        text: `Status target: run ${runId}\nRun: ${runId}\nState: ${status.state}\nDir: ${asyncDir}`,
+        text: replyText,
+        ...(options.statusReply?.structuredAsyncDir ? { asyncDir } : {}),
+        ...(options.statusReply?.structuredDetailsAsyncDir ? { details: { asyncDir } } : {}),
       },
     });
   });
@@ -225,6 +232,26 @@ test("owned async run uses session metadata, not status model/thinking or messag
   assert.equal(info.last_assistant_message?.provider, "cliproxyapi");
   assert.equal(info.session?.id, "child-session-id");
   assert.equal(JSON.stringify(info).includes("SECRET MESSAGE BODY"), false);
+});
+
+test("uses a structured async directory when status projection provides one", async () => {
+  const run = await makeRun({
+    statusReply: { text: "Run: run-owned-1\\nState: complete", structuredAsyncDir: true },
+    sessionLines: [sessionHeader()],
+  });
+  const info = await getSubagentRuntimeInfo(run.runId, run.lookup());
+  assert.equal(info.status, "complete");
+  assert.equal(info.session?.id, "child-session-id");
+  assert.match(info.confidence, /insufficient/);
+});
+
+test("accepts CRLF status text and ignores surrounding path whitespace", async () => {
+  const run = await makeRun({
+    statusReply: { crlfDirSpacing: true },
+    sessionLines: [sessionHeader()],
+  });
+  const info = await getSubagentRuntimeInfo(run.runId, run.lookup());
+  assert.equal(info.status, "complete");
 });
 
 test("multi-child run requires an explicit index and then selects that child", async () => {

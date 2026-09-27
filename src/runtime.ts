@@ -120,6 +120,12 @@ interface AsyncStatusSnapshot {
   steps: AsyncStatusStep[];
 }
 
+interface SubagentStatusReply {
+  text: string;
+  /** Optional structured path for newer status RPC projections. */
+  asyncDir?: string;
+}
+
 interface SessionNode {
   id: string;
   parentId: string | null;
@@ -267,21 +273,21 @@ function rpcFailureMessage(value: unknown): string {
   return code ? `${code}: ${message}` : message;
 }
 
-async function requestSubagentStatus(agentId: string, lookup: SubagentRuntimeLookup): Promise<string> {
+async function requestSubagentStatus(agentId: string, lookup: SubagentRuntimeLookup): Promise<SubagentStatusReply> {
   const requestId = randomUUID();
   const timeoutMs = lookup.timeoutMs ?? DEFAULT_RPC_TIMEOUT_MS;
   const replyChannel = rpcReplyEvent(requestId);
-  return new Promise<string>((resolve, reject) => {
+  return new Promise<SubagentStatusReply>((resolve, reject) => {
     let settled = false;
     let unsubscribe: (() => void) | undefined;
     const timer = setTimeout(() => finish(new Error("pi-subagents RPC недоступен: не получен ответ status.")), timeoutMs);
-    const finish = (error?: Error, text?: string): void => {
+    const finish = (error?: Error, value?: SubagentStatusReply): void => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       unsubscribe?.();
       if (error) reject(error);
-      else resolve(text ?? "");
+      else resolve(value ?? { text: "" });
     };
 
     try {
@@ -289,12 +295,14 @@ async function requestSubagentStatus(agentId: string, lookup: SubagentRuntimeLoo
         const reply = asRecord(raw);
         if (reply?.success === true) {
           const data = asRecord(reply.data);
-          const text = nonEmptyString(data?.text);
-          if (!text) {
-            finish(new Error("pi-subagents RPC вернул status без текстового результата."));
+          const text = nonEmptyString(data?.text) ?? "";
+          const details = asRecord(data?.details);
+          const asyncDir = absolutePath(data?.asyncDir) ?? absolutePath(details?.asyncDir);
+          if (!text && !asyncDir) {
+            finish(new Error("pi-subagents RPC вернул status без текстового или структурированного результата."));
             return;
           }
-          finish(undefined, text);
+          finish(undefined, { text, ...(asyncDir ? { asyncDir } : {}) });
           return;
         }
         finish(new Error(rpcFailureMessage(raw)));
@@ -315,7 +323,7 @@ async function requestSubagentStatus(agentId: string, lookup: SubagentRuntimeLoo
 
 function statusLine(text: string, label: string): string | undefined {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return text.match(new RegExp(`^${escaped}: (.+)$`, "m"))?.[1];
+  return text.match(new RegExp(`^${escaped}:[ \\t]+([^\\r\\n]+)$`, "m"))?.[1]?.trim();
 }
 
 async function readAsyncStatus(asyncDir: string, fallbackCwd: string): Promise<AsyncStatusSnapshot> {
@@ -573,8 +581,8 @@ export async function getSubagentRuntimeInfo(agentId: string, lookup: SubagentRu
     throw new Error("Текущая родительская Pi-сессия не имеет проверяемого идентификатора.");
   }
 
-  const statusText = await requestSubagentStatus(normalizedId, lookup);
-  const asyncDir = absolutePath(statusLine(statusText, "Dir"));
+  const statusReply = await requestSubagentStatus(normalizedId, lookup);
+  const asyncDir = statusReply.asyncDir ?? absolutePath(statusLine(statusReply.text, "Dir"));
   if (!asyncDir) throw new Error("pi-subagents status не вернул безопасный путь async run.");
   const status = await readAsyncStatus(asyncDir, lookup.parentSession.cwd);
   if (path.basename(asyncDir) !== status.runId || !(status.runId === normalizedId || status.runId.startsWith(normalizedId))) {

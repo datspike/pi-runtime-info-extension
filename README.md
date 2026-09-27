@@ -21,7 +21,7 @@ This extension keeps that check inside Pi, without patching Pi core.
 - `runtime_info` tool for the current Pi session.
 - `subagent_runtime_info` tool for checking an owned `pi-subagents` async run by `agent_id`, including completed and resumed runs.
 - Multi-child runs require the optional `index` parameter (or the command's second argument).
-- Tested subagent integration with nicobailon `pi-subagents` 0.66.x through its versioned in-process RPC seam.
+- Tested subagent integration with nicobailon `pi-subagents` 0.66.0, 0.68.0, and 0.72.1 through the compatible versioned in-process RPC seam.
 - `runtime_artifact_fields` tool that returns ready-to-paste YAML/JSON artifact fields.
 - `/runtime-info` command for a quick human-readable runtime summary.
 - No external service and no network calls.
@@ -142,13 +142,13 @@ The current-session tools use documented Pi extension APIs:
 - `pi.getThinkingLevel()`;
 - session assistant message metadata.
 
-The `subagent_runtime_info` tool is intentionally narrower. It is tested against nicobailon `pi-subagents` 0.66.x:
+The `subagent_runtime_info` tool is intentionally narrower. Static compatibility is verified against nicobailon `pi-subagents` 0.66.0, 0.68.0, and 0.72.1; the project baseline is 0.68.0:
 
 ```bash
 pi install git:github.com/nicobailon/pi-subagents
 ```
 
-It sends a targeted `status` request over `subagents:rpc:v1:request` and accepts only a run whose `status.json.sessionId` matches the current parent session. The adapter reads package-owned run metadata and a snapshot of the latest saved branch in the child session JSONL, not a live parent-side runtime; `status.model` and `status.thinking` are not treated as actual values. If `pi-subagents` is not installed, not loaded, or does not expose this RPC seam, current-session tools continue to work and the subagent tool reports a clear error.
+It sends a targeted `status` request over `subagents:rpc:v1:request` and accepts only a run whose `status.json.sessionId` matches the current parent session. When a compatible structured `asyncDir` projection is present, the adapter uses it; otherwise it falls back to the stable `Dir:` line in the status text. It reads package-owned run metadata and a snapshot of the latest saved branch in the child session JSONL, not a live parent-side runtime; `status.model` and `status.thinking` are not treated as actual values. If `pi-subagents` is not installed, not loaded, or does not expose this RPC seam, current-session tools continue to work and the subagent tool reports a clear error.
 
 ## Where to read current Pi docs
 
